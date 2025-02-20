@@ -31,6 +31,13 @@ export function PlaybookEditor({ playbook, onCancel }: PlaybookEditorProps) {
   const createPlaybookMutation = useMutation({
     mutationFn: async (data: { name: string; description: string; content: string }) => {
       const res = await apiRequest("POST", "/api/playbooks", data);
+
+      // If response is not OK, throw an error
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to create playbook");
+      }
+
       return res.json();
     },
     onSuccess: () => {
@@ -43,7 +50,15 @@ export function PlaybookEditor({ playbook, onCancel }: PlaybookEditorProps) {
       setDescription("");
       setContent("");
     },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "An error occurred while creating the playbook",
+        variant: "destructive", // Makes it red
+      });
+    },
   });
+
 
   const updatePlaybookMutation = useMutation({
     mutationFn: async (data: { id: number; name: string; description: string; content: string }) => {
@@ -73,9 +88,21 @@ export function PlaybookEditor({ playbook, onCancel }: PlaybookEditorProps) {
         content,
       });
     } else {
-      createPlaybookMutation.mutate({ name, description, content });
+      createPlaybookMutation.mutate(
+        { name, description, content },
+        {
+          onError: (error: any) => {
+            toast({
+              title: "Error",
+              description: error.message || "Invalid playbook syntax",
+              variant: "destructive", // Red notification
+            });
+          },
+        }
+      );
     }
   };
+
 
   return (
     <div className="space-y-4">

@@ -24,21 +24,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const parsed = insertPlaybookSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json(parsed.error);
+        return res.status(400).json(parsed.error);
     }
 
     // Validate Ansible playbook syntax
-    const isValid = await ansibleService.validatePlaybook(parsed.data.content);
-    if (!isValid) {
-      return res.status(400).json({ message: "Invalid Ansible playbook syntax" });
-    }
+    try {
+        const isValid = await ansibleService.validatePlaybook(parsed.data.content);
+        if (!isValid) {
+            return res.status(400).json({ message: "Invalid Ansible playbook syntax" });
+        }
 
-    const playbook = await storage.createPlaybook({
-      ...parsed.data,
-      createdBy: req.user.id,
-    });
-    res.status(201).json(playbook);
-  });
+        const playbook = await storage.createPlaybook({
+            ...parsed.data,
+            createdBy: req.user.id,
+        });
+
+        return res.status(201).json(playbook);
+    } catch (error: any) {
+        console.error("Playbook validation error:", error);
+        return res.status(500).json({ message: error.message || "An error occurred while validating the playbook" });
+    }
+});
+
 
   app.patch("/api/playbooks/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
